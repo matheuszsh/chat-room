@@ -9,7 +9,7 @@ thread_lock = threading.Lock()
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-print("x00:00---Welcome the net :D---x00:00")
+print("x00:00---Welcome to the net :D---x00:00")
 nickname = input("nickname:").upper()
 serverIp = input("server ip:")
 
