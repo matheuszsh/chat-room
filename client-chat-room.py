@@ -1,59 +1,89 @@
 import socket
 import threading
-from pynput import keyboard
 import time
-from os import _exit
+from sys import exit
+from cryptography.fernet import Fernet
+from dotenv import load_dotenv
+import os
+
+load_dotenv() # carrega as variaveis de ambiente
+
+SHARED_KEY = os.getenv("SHARED_KEY")
+
+cipher = Fernet(SHARED_KEY.encode())
 
 stop_thread = threading.Event()
-thread_lock = threading.Lock()
+start_send_client_msg_event = threading.Event()
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+try:
+    print("x00:00---Welcome to the net :D---x00:00")
+    nickname = input("nickname:").upper()
+    serverIp = input("server ip:")
+    try:
+        client.connect((serverIp, 80))
+    except:
+        print("\n</connection failure/>")
+        exit(0)
+except:
+    exit(0)
 
-print("x00:00---Welcome to the net :D---x00:00")
-nickname = input("nickname:").upper()
-serverIp = input("server ip:")
-
-def main():
-
-    thread_lock.acquire()
-    client.connect((serverIp, 5050))
+def send_recv():
+   
     # Criando o objeto <socket client>
     while not stop_thread.is_set():
         try:
-            sever_msg = client.recv(1024).decode("utf-8")
+            # Manda o nick do usuário para o servidor
+            sever_msg = cipher.decrypt(client.recv(1024)).decode("utf-8") # NICK OR Broadcast
             if sever_msg == "NICK":
                 print("Send nick")
-                client.send(nickname.encode())
+                encrypted_nick = cipher.encrypt(nickname.encode())
+                client.send(encrypted_nick)
+                start_send_client_msg_event.set()
             else:
+                # Recebe mensagem do broadcast
                 print(sever_msg)
+        except KeyboardInterrupt:
+            print("thread 1 atictived")
+            stop_thread.set()
         except:
-            print("!!! <> Lost Connection <> !!!")
-            client.close()
-    thread_lock.release()
+            print("</connection failure/>")
+            stop_thread.set()
+            exit(0)
 
-def write():
+
+
+def send_client_msg():
+    start_send_client_msg_event.wait()
     while not stop_thread.is_set():
-        text_msg = input("")
-        client.send(text_msg.encode())
+        try:
+            text_msg = input("")
+            encrypted_msg = cipher.encrypt(text_msg.encode())
+            client.send(encrypted_msg)
 
-def on_press_key(key):
-    if key == keyboard.Key.esc:
-        print("you leave on the session...")
-        time.sleep(1)
-        stop_thread.set()
-        _exit(0)
-    
-        
-        
+        except (EOFError, KeyboardInterrupt):
+            print("[INFO] the user stopped the program.")
+            stop_thread.set()
+            client.close()
+            break
 
-run_main = threading.Thread(target=main)
-run_main.start()
+        except Exception as e:
+            print(f"[ERRO] message failed to send: {e}")
+            stop_thread.set()
+            client.close()
+            break
 
-run_write = threading.Thread(target=write)
-run_write.start()
+try:
+    run_send_recv = threading.Thread(target=send_recv)
+    run_send_recv.start()
 
-with keyboard.Listener(on_press=on_press_key) as listener:
-    listener.join()
+    run_send_client_msg = threading.Thread(target=send_client_msg)
+    run_send_client_msg.start()
 
+    run_send_recv.join()
+    run_send_client_msg.join()
 
-
+except KeyboardInterrupt:
+    print("</program finished/>")
+    stop_thread.set()
+    exit(0)
