@@ -3,4 +3,7 @@ O projeto é uma aplicação simples de linha de comando, usado para se comunica
 
 ## 📌 Características
 
-✅C
+### ✅ Comunicação entre dois ou mais hosts
+### ✅ Baseado na arquitetura cliente-servidor
+### ✅ Aplicação client em linha de comando
+### ✅ Mensagens criptografadas com criptografia simétrica
